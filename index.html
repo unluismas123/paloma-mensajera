@@ -101,12 +101,31 @@
         <div class="pm-field"><label>Destinatario (Nombre exacto de tu amigo)</label><input type="text" id="pm-recipient" required></div>
         <div class="pm-field"><label>Mensajero</label>
           <select id="pm-bird">
-            <option value="🕊️">🕊️ Paloma Blanca</option>
-            <option value="🐦‍⬛">🐦‍⬛ Cuervo</option>
-            <option value="🦉">🦉 Búho</option>
-            <option value="🦅">🦅 Halcón</option>
-          </select>
-        </div>
+            <div class="pm-field">
+  <label>Mensajero Alado</label>
+  <select id="pm-bird">
+    <!-- Aves Clásicas -->
+    <option value="🕊️">🕊️ Paloma Blanca (Clásica)</option>
+    <option value="🐦‍⬛">🐦‍⬛ Cuervo Mensajero (Nocturno)</option>
+    <option value="🦉">🦉 Búho Cartero</option>
+    <option value="🦅">🦅 Halcón Peregrino</option>
+    <option value="🦜">🦜 Loro (Hace mucho ruido al llegar)</option>
+    <option value="🦢">🦢 Cisne Majestuoso</option>
+    <option value="🦆">🦆 Pato Migratorio</option>
+    <option value="🦩">🦩 Flamenco Elegante</option>
+    <option value="🦇">🦇 Murciélago (Ideal para vampiros)</option>
+
+    <!-- Criaturas Míticas / Estilo Pokémon -->
+    <option value="🐉">🐉 Dragón Verde (Tipo Rayquaza)</option>
+    <option value="🔥🦅">🔥🦅 Ave de Fuego (Tipo Moltres)</option>
+    <option value="⚡🐦">⚡🐦 Ave del Trueno (Tipo Zapdos)</option>
+    <option value="❄️🦉">❄️🦉 Búho de Hielo (Tipo Articuno)</option>
+    <option value="🦋">🦋 Mariposa Gigante (Tipo Butterfree)</option>
+    <option value="🛸">🛸 OVNI Súper Veloz</option>
+    <option value="🎈">🎈 Globo de Helio con Carta</option>
+    <option value="🪁">🪁 Cometa Mágica</option>
+  </select>
+</div>
       </div>
       <div class="pm-row2">
         <div class="pm-field"><label>Origen (📍 Pin en mapa)</label><div class="pm-loc-wrap"><select id="pm-from"></select><button type="button" class="pm-pin-btn" id="btn-pin-from">📍</button></div></div>
@@ -148,7 +167,24 @@
     {id:'lima', name:'Lima', lat:-12.0464, lon:-77.0428},
     {id:'arequipa', name:'Arequipa', lat:-16.4090, lon:-71.5375},
     {id:'trujillo', name:'Trujillo', lat:-8.1116, lon:-79.0288},
-    {id:'cusco', name:'Cusco', lat:-13.5320, lon:-71.9675}
+    {id:'chiclayo', name:'Chiclayo', lat:-6.7714, lon:-79.8409},
+    {id:'piura', name:'Piura', lat:-5.1945, lon:-80.6328},
+    {id:'iquitos', name:'Iquitos', lat:-3.7437, lon:-73.2516},
+    {id:'cusco', name:'Cusco', lat:-13.5320, lon:-71.9675},
+    {id:'chimbote', name:'Chimbote', lat:-9.0745, lon:-78.5936},
+    {id:'huancayo', name:'Huancayo', lat:-12.0651, lon:-75.2049},
+    {id:'tacna', name:'Tacna', lat:-18.0146, lon:-70.2536},
+    {id:'ica', name:'Ica', lat:-14.0678, lon:-75.7286},
+    {id:'juliaca', name:'Juliaca', lat:-15.4997, lon:-70.1333},
+    {id:'pucallpa', name:'Pucallpa', lat:-8.3791, lon:-74.5539},
+    {id:'ayacucho', name:'Ayacucho', lat:-13.1588, lon:-74.2232},
+    {id:'cajamarca', name:'Cajamarca', lat:-7.1638, lon:-78.5003},
+    {id:'puno', name:'Puno', lat:-15.8402, lon:-70.0219},
+    {id:'tumbes', name:'Tumbes', lat:-3.5669, lon:-80.4515},
+    {id:'huaraz', name:'Huaraz', lat:-9.5277, lon:-77.5278},
+    {id:'tarapoto', name:'Tarapoto', lat:-6.4779, lon:-76.3766},
+    {id:'huanuco', name:'Huánuco', lat:-9.9306, lon:-76.2422},
+    {id:'moquegua', name:'Moquegua', lat:-17.1938, lon:-70.9349}
   ];
   let dynamicLocations = [...CITIES];
   const BASE_SPEED = 20000; 
