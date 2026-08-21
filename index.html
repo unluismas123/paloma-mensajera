@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pergaminos al Vuelo - Multijugador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Servidor de comunicación en tiempo real (MQTT) -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+  :root{
+    --parchment:#EBDFC2;
+    --parchment-deep:#DBC79C;
+    --parchment-line:rgba(59,42,26,0.18);
+    --ink:#3B2A1A;
+    --ink-soft:#6B563C;
+    --seal:#8C2A1D;
+    --seal-dark:#6E2015;
+    --gold:#A8792B;
+    --teal:#4F6F63;
+    --lost:#7A4A3A;
+    --delivered:#4C6B45;
+    font-family:'EB Garamond',serif;
+  }
+  body { background: #1a1a1a; display: flex; justify-content: center; padding: 10px; margin: 0; }
+  *{box-sizing:border-box;}
+  
+  .pm-root{ width: 100%; max-width: 800px; background: var(--parchment); color:var(--ink); border-radius:10px; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  
+  /* Panel Multijugador */
+  .pm-multiplayer-bar { background: var(--ink); color: #EBDFC2; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; font-family: 'Cinzel', serif; font-size: 12px; }
+  .pm-multiplayer-bar input { background: rgba(255,255,255,0.1); border: 1px solid var(--gold); color: white; padding: 6px 10px; border-radius: 4px; font-family: 'EB Garamond'; font-size: 14px; outline: none; }
+  .pm-multiplayer-bar button { background: var(--gold); color: var(--ink); border: none; padding: 7px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+  .pm-multiplayer-bar button:hover { background: #c2913b; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ccc; margin-right: 5px; }
+  .status-dot.online { background: #4ec928; box-shadow: 0 0 8px #4ec928; }
+
+  .pm-header{ padding:20px 24px 15px; text-align:center; border-bottom:1px solid var(--parchment-line); }
+  .pm-seal{ width:46px; height:46px; border-radius:50%; margin:0 auto 8px; background:radial-gradient(circle at 35% 30%, #b0392a, var(--seal) 55%, var(--seal-dark) 100%); display:flex; align-items:center; justify-content:center; font-size:20px; color:#f2e2c4; }
+  .pm-title{ font-family:'Cinzel',serif; font-weight:600; font-size:28px; margin:5px 0 4px; color:var(--ink); }
+  .pm-sub{ font-family:'EB Garamond',serif; font-style:italic; font-size:14px; color:var(--ink-soft); }
+
+  .pm-map-wrap{ padding:16px 20px 6px; }
+  .pm-map-card{ background:var(--parchment-deep); border:1px solid var(--parchment-line); border-radius:8px; padding:10px; }
+  #pm-leaflet-map{ width:100%; height:350px; border-radius:6px; border:1px solid var(--parchment-line); background:#d8cba6; }
+  
+  .pm-city-tooltip{ background:none; border:none; box-shadow:none; font-family:'EB Garamond',serif; font-size:12px; font-weight:600; color:var(--ink); text-shadow: 0 0 3px white; }
+  .pm-pigeon-icon{ font-size:22px; filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5)); transition: transform 0.2s;}
+
+  .pm-tabs{ display:flex; flex-wrap:wrap; gap:6px; padding:10px 20px 0; }
+  .pm-tab-btn{ flex:1; padding:9px 6px; border:1px solid var(--ink); background:var(--parchment); font-family:'Cinzel',serif; font-size:11px; cursor:pointer; color:var(--ink); border-radius:6px 6px 0 0; border-bottom:none; opacity:0.6; }
+  .pm-tab-btn.active{ opacity:1; background:var(--parchment-deep); font-weight:bold; }
+
+  .pm-panel{ margin:0 20px 20px; border:1px solid var(--ink); border-radius:0 6px 6px 6px; background:var(--parchment-deep); padding:18px; }
+  .pm-field{ margin-bottom:12px; }
+  .pm-field label{ display:block; font-family:'Cinzel',serif; font-size:10px; color:var(--ink-soft); margin-bottom:5px; }
+  .pm-field input, .pm-field select, .pm-field textarea{ width:100%; padding:9px 10px; border:1px solid rgba(59,42,26,0.35); border-radius:5px; background:var(--parchment); font-family:'EB Garamond',serif; font-size:15px; color:var(--ink); }
+  .pm-field textarea{ min-height:80px; font-family:'Caveat',cursive; font-size:20px; }
+  .pm-row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  
+  .pm-loc-wrap { display: flex; gap: 5px; }
+  .pm-pin-btn { background: var(--parchment); border: 1px solid rgba(59,42,26,0.35); border-radius: 5px; padding: 0 10px; cursor: pointer; font-size: 16px; }
+  .pm-pin-btn:hover { background: var(--teal); color: white; }
+  .picking-map { cursor: crosshair !important; border: 2px solid var(--seal) !important; }
+
+  .pm-btn{ width:100%; padding:12px; background:var(--seal); color:#f2e2c4; border:none; border-radius:6px; font-family:'Cinzel',serif; font-size:13px; cursor:pointer; }
+  .pm-btn:hover{ background:var(--seal-dark); }
+  
+  .pm-envelope{ background:var(--parchment); border:1px solid var(--parchment-line); border-radius:6px; margin-bottom:10px; padding:15px; }
+  .pm-envelope-top{ font-family:'Cinzel',serif; font-weight:bold; font-size:14px; border-bottom: 1px dashed var(--ink-soft); padding-bottom: 5px; margin-bottom: 10px; }
+  .pm-envelope-text{ font-family:'Caveat',cursive; font-size:22px; color:var(--ink); white-space:pre-wrap; }
+  
+  .pm-footnote{ text-align:center; font-size:11px; color:var(--ink-soft); padding:10px; }
+</style>
+</head>
+<body>
+
+<div class="pm-root">
+  <!-- BARRA MULTIJUGADOR -->
+  <div class="pm-multiplayer-bar">
+    <div>
+      <label>Tu Nombre:</label>
+      <input type="text" id="my-name" placeholder="Ej. Gandalf" style="width: 120px;">
+    </div>
+    <div>
+      <label>Sala con amigos:</label>
+      <input type="text" id="my-room" placeholder="Ej. sala-secreta-123" style="width: 140px;">
+    </div>
+    <div>
+      <button id="btn-connect">Conectar red</button>
+      <span id="conn-status" style="margin-left:10px; font-size: 11px;"><span class="status-dot"></span>Desconectado</span>
+    </div>
+  </div>
+
+  <div class="pm-header">
+    <div class="pm-seal">🕊️</div>
+    <div class="pm-title">Pergaminos al Vuelo</div>
+    <div class="pm-sub">El cielo conecta lo que la distancia separa.</div>
+  </div>
+
+  <div class="pm-map-wrap">
+    <div class="pm-map-card">
+      <div id="pm-leaflet-map"></div>
+    </div>
+  </div>
+
+  <div class="pm-tabs">
+    <button class="pm-tab-btn active" data-tab="enviar" id="pm-tabbtn-enviar">Escribir Carta</button>
+    <button class="pm-tab-btn" data-tab="bandeja" id="pm-tabbtn-bandeja">Bandeja de Entrada</button>
+  </div>
+
+  <!-- PANEL: ENVIAR -->
+  <div class="pm-panel" id="pm-panel-enviar">
+    <form id="pm-form">
+      <div class="pm-row2">
+        <div class="pm-field">
+          <label>Destinatario (Nombre exacto de tu amigo)</label>
+          <input type="text" id="pm-recipient" required placeholder="Ej. Gandalf">
+        </div>
+        <div class="pm-field">
+          <label>Mensajero</label>
+          <select id="pm-bird">
+            <option value="🕊️">🕊️ Paloma Blanca</option>
+            <option value="🐦‍⬛">🐦‍⬛ Cuervo</option>
+            <option value="🦉">🦉 Búho</option>
+            <option value="🦅">🦅 Halcón</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="pm-row2">
+        <div class="pm-field">
+          <label>Origen (📍 Pin en mapa)</label>
+          <div class="pm-loc-wrap">
+            <select id="pm-from"></select>
+            <button type="button" class="pm-pin-btn" id="btn-pin-from">📍</button>
+          </div>
+        </div>
+        <div class="pm-field">
+          <label>Destino (📍 Pin en mapa)</label>
+          <div class="pm-loc-wrap">
+            <select id="pm-to"></select>
+            <button type="button" class="pm-pin-btn" id="btn-pin-to">📍</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="pm-field">
+        <label>Mensaje secreto</label>
+        <textarea id="pm-text" required placeholder="Escribe aquí tu misiva..."></textarea>
+      </div>
+      
+      <button type="submit" class="pm-btn" id="pm-send-btn">Soltar al mensajero</button>
+      <div id="pm-confirm" style="color: var(--delivered); margin-top: 10px; text-align: center; font-weight: bold;"></div>
+    </form>
+  </div>
+
+  <!-- PANEL: BANDEJA -->
+  <div class="pm-panel" id="pm-panel-bandeja" style="display:none;">
+    <p style="font-style:italic; font-size:12px; margin-top:0;">*Aquí aparecerán las cartas que han llegado a su destino en la sala actual.</p>
+    <div id="pm-envelopes-wrap"></div>
+  </div>
+
+  <div class="pm-footnote">
+    Mapa GPS real · Para enviar/recibir ambos deben tener la sala conectada y la pestaña abierta.
+  </div>
+</div>
+
+<!-- AUDIO PARA NOTIFICACIÓN -->
+<audio id="audio-bell" src="https://actions.google.com/sounds/v1/alarms/spaceship_alarm.ogg" preload="auto"></audio>
+
+<script>
+(function(){
+  // --- CIUDADES Y MATEMÁTICAS ---
+  const CITIES = [
+    {id:'lima', name:'Lima', lat:-12.0464, lon:-77.0428},
+    {id:'arequipa', name:'Arequipa', lat:-16.4090, lon:-71.5375},
+    {id:'trujillo', name:'Trujillo', lat:-8.1116, lon:-79.0288},
+    {id:'cusco', name:'Cusco', lat:-13.5320, lon:-71.9675}
+  ];
+  let dynamicLocations = [...CITIES];
+  
+  function haversine(lat1,lon1,lat2,lon2){
+    const R=6371; const toRad=d=>d*Math.PI/180;
+    const a=Math.sin(toRad(lat2-lat1)/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(toRad(lon2-lon1)/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+
+  // Velocidad aumentada para la diversión en multijugador (aprox 10-30 segundos de viaje según distancia)
+  const BASE_SPEED = 20000; 
+  let allMessages = [];
+  let notifiedIds = JSON.parse(localStorage.getItem('pm-notificados') || '[]');
+
+  // --- UI MAPA LEAFLET ---
+  const leafletMap = L.map('pm-leaflet-map').setView([-9.19,-75.02], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(leafletMap);
+  
+  CITIES.forEach(c => L.circleMarker([c.lat,c.lon], {radius:4, color:'#8C2A1D', fillColor:'#A8792B', fillOpacity:1}).addTo(leafletMap).bindTooltip(c.name, {permanent:true, className:'pm-city-tooltip'}));
+
+  let mapPickMode = null;
+  function togglePin(mode) {
+      mapPickMode = mapPickMode === mode ? null : mode;
+      document.getElementById('pm-leaflet-map').classList.toggle('picking-map', !!mapPickMode);
+  }
+  document.getElementById('btn-pin-from').addEventListener('click', () => togglePin('from'));
+  document.getElementById('btn-pin-to').addEventListener('click', () => togglePin('to'));
+
+  leafletMap.on('click', (e) => {
+      if (!mapPickMode) return;
+      const id = 'custom-' + Date.now();
+      const newLoc = { id, name: `Punto 📍`, lat: e.latlng.lat, lon: e.latlng.lng };
+      dynamicLocations.push(newLoc);
+      
+      const sel = mapPickMode === 'from' ? document.getElementById('pm-from') : document.getElementById('pm-to');
+      const opt = document.createElement('option');
+      opt.value = id; opt.textContent = newLoc.name;
+      sel.appendChild(opt); sel.value = id;
+      
+      L.circleMarker([newLoc.lat,newLoc.lon], {radius:4, color:'#4F6F63', fillColor:'#4F6F63', fillOpacity:1}).addTo(leafletMap);
+      togglePin(mapPickMode);
+  });
+
+  function refreshSelects() {
+    const f=document.getElementById('pm-from'), t=document.getElementById('pm-to');
+    f.innerHTML=''; t.innerHTML='';
+    dynamicLocations.forEach(c => {
+      f.appendChild(new Option(c.name, c.id));
+      t.appendChild(new Option(c.name, c.id));
+    });
+    t.value = 'cusco';
+  }
+  refreshSelects();
+
+  // Tabs
+  document.getElementById('pm-tabbtn-enviar').onclick = () => { switchTab('enviar'); };
+  document.getElementById('pm-tabbtn-bandeja').onclick = () => { switchTab('bandeja'); };
+  function switchTab(t) {
+      document.getElementById('pm-tabbtn-enviar').classList.toggle('active', t==='enviar');
+      document.getElementById('pm-tabbtn-bandeja').classList.toggle('active', t==='bandeja');
+      document.getElementById('pm-panel-enviar').style.display = t==='enviar' ? 'block':'none';
+      document.getElementById('pm-panel-bandeja').style.display = t==='bandeja' ? 'block':'none';
+      if(t==='bandeja') renderInbox();
+  }
+
+  // --- MULTIJUGADOR / RED (MQTT) ---
+  let mqttClient = null;
+  let currentRoom = "";
+  
+  // Cargar datos de perfil guardados
+  document.getElementById('my-name').value = localStorage.getItem('pm-name') || '';
+  document.getElementById('my-room').value = localStorage.getItem('pm-room') || 'sala-publica';
+
+  document.getElementById('btn-connect').addEventListener('click', () => {
+      const name = document.getElementById('my-name').value.trim();
+      const room = document.getElementById('my-room').value.trim().toLowerCase();
+      
+      if(!name || !room) { alert("Llena tu Nombre y el Nombre de la Sala para conectar."); return; }
+      
+      localStorage.setItem('pm-name', name);
+      localStorage.setItem('pm-room', room);
+      
+      // Pedir permisos de notificacion
+      if ("Notification" in window && Notification.permission !== "granted") {
+          Notification.requestPermission();
+      }
+
+      const statusEl = document.getElementById('conn-status');
+      statusEl.innerHTML = '<span class="status-dot"></span>Conectando...';
+
+      if(mqttClient) mqttClient.end(); // Desconectar si había otra sala
+
+      // Conectar al servidor público gratuito MQTT
+      mqttClient = mqtt.connect('wss://test.mosquitto.org:8081');
+      currentRoom = `pergaminos-app/${room}`;
+
+      mqttClient.on('connect', () => {
+          statusEl.innerHTML = '<span class="status-dot online"></span>Conectado a ' + room;
+          mqttClient.subscribe(currentRoom);
+          allMessages = []; // Limpiar cielo al entrar a nueva sala
+      });
+
+      mqttClient.on('message', (topic, payload) => {
+          const msg = JSON.parse(payload.toString());
+          // Evitar duplicados
+          if(!allMessages.find(m => m.id === msg.id)) {
+              allMessages.push(msg);
+              // Si trae puntos del mapa que no tengo, los agrego visualmente
+              [msg.fromData, msg.toData].forEach(loc => {
+                  if(loc.id.startsWith('custom-') && !dynamicLocations.find(l=>l.id===loc.id)){
+                      dynamicLocations.push(loc);
+                  }
+              });
+          }
+      });
+  });
+
+  // --- ENVIAR CARTA ---
+  document.getElementById('pm-form').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    if(!mqttClient || !mqttClient.connected) {
+        alert("Primero debes darle clic a 'Conectar red' arriba."); return;
+    }
+
+    const myName = document.getElementById('my-name').value.trim();
+    const recipient = document.getElementById('pm-recipient').value.trim();
+    const bird = document.getElementById('pm-bird').value;
+    const text = document.getElementById('pm-text').value.trim();
+    const f=dynamicLocations.find(x=>x.id===document.getElementById('pm-from').value);
+    const t=dynamicLocations.find(x=>x.id===document.getElementById('pm-to').value);
+    
+    if(f.id === t.id) { alert('El origen y destino deben ser distintos.'); return; }
+
+    const dist = haversine(f.lat, f.lon, t.lat, t.lon);
+    const hours = dist/BASE_SPEED; // acelerado
+    const now = Date.now();
+    const arrivalAt = now + (hours * 3600 * 1000);
+
+    const msg = {
+      id: "msg-" + now + "-" + Math.floor(Math.random()*1000),
+      sender: myName, recipient, bird, text, fromData: f, toData: t,
+      sentAt: now, arrivalAt
+    };
+    
+    // Publicar al mundo (a la sala)
+    mqttClient.publish(currentRoom, JSON.stringify(msg));
+    
+    document.getElementById('pm-text').value='';
+    const conf = document.getElementById('pm-confirm');
+    conf.textContent = `¡${bird} soltado en la red!`;
+    setTimeout(() => conf.textContent = '', 4000);
+  });
+
+  // --- NOTIFICACIONES ---
+  function checkArrivals() {
+      const now = Date.now();
+      const myName = document.getElementById('my-name').value.trim().toLowerCase();
+      let changed = false;
+
+      allMessages.forEach(m => {
+          if (notifiedIds.includes(m.id)) return; // ya notificado
+
+          if (now >= m.arrivalAt) { // Si ya llegó
+              const isForMe = myName && m.recipient.toLowerCase() === myName;
+              const isFromMe = myName && m.sender.toLowerCase() === myName;
+
+              if (isForMe || isFromMe) {
+                  let title, body;
+                  
+                  if (isForMe) {
+                      title = `¡Ha llegado un ${m.bird} para ti!`;
+                      body = `${m.sender} te ha enviado un mensaje desde ${m.fromData.name}.`;
+                      // Hacer sonar campana
+                      document.getElementById('audio-bell').play().catch(e=>{});
+                  } else if (isFromMe) {
+                      title = `¡Tu ${m.bird} completó el viaje!`;
+                      body = `Tu carta fue entregada con éxito a ${m.recipient}.`;
+                  }
+
+                  if (title && Notification.permission === "granted") {
+                      new Notification(title, { body, icon: "https://cdn-icons-png.flaticon.com/512/3011/3011127.png" });
+                  }
+                  
+                  // Forzar refresco visual si estoy en la pestaña de bandeja
+                  if(isForMe && document.getElementById('pm-panel-bandeja').style.display==='block'){
+                      renderInbox(); 
+                  }
+              }
+              notifiedIds.push(m.id);
+              changed = true;
+          }
+      });
+      if(changed) localStorage.setItem('pm-notificados', JSON.stringify(notifiedIds));
+  }
+
+  // --- RENDERIZADO VISUAL ---
+  const flightLayers = {};
+  function bez(p0,p1,t){
+      const c = [ (p0[0]+p1[0])/2 - (p1[1]-p0[1])*0.13, (p0[1]+p1[1])/2 + (p1[0]-p0[0])*0.13 ];
+      return [ (1-t)*(1-t)*p0[0] + 2*(1-t)*t*c[0] + t*t*p1[0], (1-t)*(1-t)*p0[1] + 2*(1-t)*t*c[1] + t*t*p1[1] ];
+  }
+
+  function renderMap(){
+    const now=Date.now();
+    const active = allMessages.filter(m => now < m.arrivalAt); // volando
+    
+    // Quitar del mapa las que ya llegaron
+    Object.keys(flightLayers).forEach(id=>{
+      if(!active.find(x=>x.id===id)){
+        leafletMap.removeLayer(flightLayers[id].line);
+        leafletMap.removeLayer(flightLayers[id].marker);
+        delete flightLayers[id];
+      }
+    });
+
+    active.forEach(m=>{
+      if(!flightLayers[m.id]){
+        const p0=[m.fromData.lat,m.fromData.lon], p1=[m.toData.lat,m.toData.lon];
+        const pts=[]; for(let i=0;i<=24;i++) pts.push(bez(p0,p1,i/24));
+        const line=L.polyline(pts,{color:'#4F6F63', weight:2, dashArray:'4 6'}).addTo(leafletMap);
+        const marker=L.marker(p0,{icon:L.divIcon({html:m.bird, className:'pm-pigeon-icon', iconSize:[24,24]})}).addTo(leafletMap);
+        flightLayers[m.id]={line, marker, p0, p1};
+      }
+      const layer=flightLayers[m.id];
+      const frac=Math.min(1, Math.max(0, (now-m.sentAt)/(m.arrivalAt-m.sentAt)));
+      layer.marker.setLatLng(bez(layer.p0, layer.p1, frac));
+      const isGoingLeft = layer.p1[1] < layer.p0[1];
+      layer.marker.getElement().style.transform += isGoingLeft ? " scaleX(-1)" : "";
+    });
+  }
+
+  function renderInbox(){
+    const wrap = document.getElementById('pm-envelopes-wrap');
+    const now = Date.now();
+    const myName = document.getElementById('my-name').value.trim().toLowerCase();
+    
+    // Solo mostramos cartas entregadas que son para mí, o mías enviadas a otros
+    const delivered = allMessages.filter(m => now >= m.arrivalAt && (m.recipient.toLowerCase()===myName || m.sender.toLowerCase()===myName)).sort((a,b)=>b.arrivalAt-a.arrivalAt);
+    
+    wrap.innerHTML = delivered.length===0 
+      ? `<div style="text-align:center; padding: 20px; color:gray; font-style:italic;">No hay cartas entregadas relacionadas contigo en esta sala.</div>`
+      : delivered.map(m=>`
+          <div class="pm-envelope">
+            <div class="pm-envelope-top">De: ${m.sender} ➔ Para: ${m.recipient}</div>
+            <div class="pm-envelope-text">${m.text}</div>
+            <div style="font-size:10px; color:gray; margin-top:8px;">Llevada por un ${m.bird} de ${m.fromData.name} a ${m.toData.name}</div>
+          </div>
+        `).join('');
+  }
+
+  // LOOP PRINCIPAL (1 vez por segundo)
+  setInterval(() => { 
+      renderMap(); 
+      checkArrivals(); 
+  }, 1000);
+
+})();
+</script>
+</body>
+</html>
