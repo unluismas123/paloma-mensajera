@@ -9,8 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<!-- Servidor de comunicación en tiempo real (MQTT) -->
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
 <style>
   :root{
@@ -23,7 +21,6 @@
     --seal-dark:#6E2015;
     --gold:#A8792B;
     --teal:#4F6F63;
-    --lost:#7A4A3A;
     --delivered:#4C6B45;
     font-family:'EB Garamond',serif;
   }
@@ -32,7 +29,6 @@
   
   .pm-root{ width: 100%; max-width: 800px; background: var(--parchment); color:var(--ink); border-radius:10px; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
   
-  /* Panel Multijugador */
   .pm-multiplayer-bar { background: var(--ink); color: #EBDFC2; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; font-family: 'Cinzel', serif; font-size: 12px; }
   .pm-multiplayer-bar input { background: rgba(255,255,255,0.1); border: 1px solid var(--gold); color: white; padding: 6px 10px; border-radius: 4px; font-family: 'EB Garamond'; font-size: 14px; outline: none; }
   .pm-multiplayer-bar button { background: var(--gold); color: var(--ink); border: none; padding: 7px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -74,27 +70,16 @@
   .pm-envelope{ background:var(--parchment); border:1px solid var(--parchment-line); border-radius:6px; margin-bottom:10px; padding:15px; }
   .pm-envelope-top{ font-family:'Cinzel',serif; font-weight:bold; font-size:14px; border-bottom: 1px dashed var(--ink-soft); padding-bottom: 5px; margin-bottom: 10px; }
   .pm-envelope-text{ font-family:'Caveat',cursive; font-size:22px; color:var(--ink); white-space:pre-wrap; }
-  
   .pm-footnote{ text-align:center; font-size:11px; color:var(--ink-soft); padding:10px; }
 </style>
 </head>
 <body>
 
 <div class="pm-root">
-  <!-- BARRA MULTIJUGADOR -->
   <div class="pm-multiplayer-bar">
-    <div>
-      <label>Tu Nombre:</label>
-      <input type="text" id="my-name" placeholder="Ej. Gandalf" style="width: 120px;">
-    </div>
-    <div>
-      <label>Sala con amigos:</label>
-      <input type="text" id="my-room" placeholder="Ej. sala-secreta-123" style="width: 140px;">
-    </div>
-    <div>
-      <button id="btn-connect">Conectar red</button>
-      <span id="conn-status" style="margin-left:10px; font-size: 11px;"><span class="status-dot"></span>Desconectado</span>
-    </div>
+    <div><label>Tu Nombre:</label> <input type="text" id="my-name" placeholder="Ej. Gandalf" style="width: 120px;"></div>
+    <div><label>Sala con amigos:</label> <input type="text" id="my-room" placeholder="Ej. sala-secreta" style="width: 140px;"></div>
+    <div><button id="btn-connect">Conectar red</button> <span id="conn-status" style="margin-left:10px; font-size: 11px;"><span class="status-dot"></span>Desconectado</span></div>
   </div>
 
   <div class="pm-header">
@@ -103,27 +88,18 @@
     <div class="pm-sub">El cielo conecta lo que la distancia separa.</div>
   </div>
 
-  <div class="pm-map-wrap">
-    <div class="pm-map-card">
-      <div id="pm-leaflet-map"></div>
-    </div>
-  </div>
+  <div class="pm-map-wrap"><div class="pm-map-card"><div id="pm-leaflet-map"></div></div></div>
 
   <div class="pm-tabs">
     <button class="pm-tab-btn active" data-tab="enviar" id="pm-tabbtn-enviar">Escribir Carta</button>
     <button class="pm-tab-btn" data-tab="bandeja" id="pm-tabbtn-bandeja">Bandeja de Entrada</button>
   </div>
 
-  <!-- PANEL: ENVIAR -->
   <div class="pm-panel" id="pm-panel-enviar">
     <form id="pm-form">
       <div class="pm-row2">
-        <div class="pm-field">
-          <label>Destinatario (Nombre exacto de tu amigo)</label>
-          <input type="text" id="pm-recipient" required placeholder="Ej. Gandalf">
-        </div>
-        <div class="pm-field">
-          <label>Mensajero</label>
+        <div class="pm-field"><label>Destinatario (Nombre exacto de tu amigo)</label><input type="text" id="pm-recipient" required></div>
+        <div class="pm-field"><label>Mensajero</label>
           <select id="pm-bird">
             <option value="🕊️">🕊️ Paloma Blanca</option>
             <option value="🐦‍⬛">🐦‍⬛ Cuervo</option>
@@ -132,51 +108,42 @@
           </select>
         </div>
       </div>
-
       <div class="pm-row2">
-        <div class="pm-field">
-          <label>Origen (📍 Pin en mapa)</label>
-          <div class="pm-loc-wrap">
-            <select id="pm-from"></select>
-            <button type="button" class="pm-pin-btn" id="btn-pin-from">📍</button>
-          </div>
-        </div>
-        <div class="pm-field">
-          <label>Destino (📍 Pin en mapa)</label>
-          <div class="pm-loc-wrap">
-            <select id="pm-to"></select>
-            <button type="button" class="pm-pin-btn" id="btn-pin-to">📍</button>
-          </div>
-        </div>
+        <div class="pm-field"><label>Origen (📍 Pin en mapa)</label><div class="pm-loc-wrap"><select id="pm-from"></select><button type="button" class="pm-pin-btn" id="btn-pin-from">📍</button></div></div>
+        <div class="pm-field"><label>Destino (📍 Pin en mapa)</label><div class="pm-loc-wrap"><select id="pm-to"></select><button type="button" class="pm-pin-btn" id="btn-pin-to">📍</button></div></div>
       </div>
-      
-      <div class="pm-field">
-        <label>Mensaje secreto</label>
-        <textarea id="pm-text" required placeholder="Escribe aquí tu misiva..."></textarea>
-      </div>
-      
+      <div class="pm-field"><label>Mensaje secreto</label><textarea id="pm-text" required></textarea></div>
       <button type="submit" class="pm-btn" id="pm-send-btn">Soltar al mensajero</button>
       <div id="pm-confirm" style="color: var(--delivered); margin-top: 10px; text-align: center; font-weight: bold;"></div>
     </form>
   </div>
 
-  <!-- PANEL: BANDEJA -->
-  <div class="pm-panel" id="pm-panel-bandeja" style="display:none;">
-    <p style="font-style:italic; font-size:12px; margin-top:0;">*Aquí aparecerán las cartas que han llegado a su destino en la sala actual.</p>
-    <div id="pm-envelopes-wrap"></div>
-  </div>
-
-  <div class="pm-footnote">
-    Mapa GPS real · Para enviar/recibir ambos deben tener la sala conectada y la pestaña abierta.
-  </div>
+  <div class="pm-panel" id="pm-panel-bandeja" style="display:none;"><div id="pm-envelopes-wrap"></div></div>
+  <div class="pm-footnote">Mapa GPS real · Deja la pestaña minimizada para recibir notificaciones sonoras en segundo plano.</div>
 </div>
 
-<!-- AUDIO PARA NOTIFICACIÓN -->
 <audio id="audio-bell" src="https://actions.google.com/sounds/v1/alarms/spaceship_alarm.ogg" preload="auto"></audio>
 
-<script>
-(function(){
-  // --- CIUDADES Y MATEMÁTICAS ---
+<!-- Lógica principal en Módulo -->
+<script type="module">
+  // IMPORTAR FIREBASE GOOGLE
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+  // TUS LLAVES (No tocar)
+  const firebaseConfig = {
+    apiKey: "AIzaSyCB0ALag9n6gTpwGAP6ibO6aGZesMMYC8s",
+    authDomain: "pergaminos-app.firebaseapp.com",
+    projectId: "pergaminos-app",
+    storageBucket: "pergaminos-app.firebasestorage.app",
+    messagingSenderId: "188400189525",
+    appId: "1:188400189525:web:b9dbc5419343a8965d14dc"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // --- CIUDADES Y MAPA ---
   const CITIES = [
     {id:'lima', name:'Lima', lat:-12.0464, lon:-77.0428},
     {id:'arequipa', name:'Arequipa', lat:-16.4090, lon:-71.5375},
@@ -184,22 +151,19 @@
     {id:'cusco', name:'Cusco', lat:-13.5320, lon:-71.9675}
   ];
   let dynamicLocations = [...CITIES];
-  
+  const BASE_SPEED = 20000; 
+  let allMessages = [];
+  let notifiedIds = JSON.parse(localStorage.getItem('pm-notificados') || '[]');
+  let unsubscribeSnapshot = null;
+
   function haversine(lat1,lon1,lat2,lon2){
     const R=6371; const toRad=d=>d*Math.PI/180;
     const a=Math.sin(toRad(lat2-lat1)/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(toRad(lon2-lon1)/2)**2;
     return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
   }
 
-  // Velocidad aumentada para la diversión en multijugador (aprox 10-30 segundos de viaje según distancia)
-  const BASE_SPEED = 20000; 
-  let allMessages = [];
-  let notifiedIds = JSON.parse(localStorage.getItem('pm-notificados') || '[]');
-
-  // --- UI MAPA LEAFLET ---
   const leafletMap = L.map('pm-leaflet-map').setView([-9.19,-75.02], 5);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(leafletMap);
-  
   CITIES.forEach(c => L.circleMarker([c.lat,c.lon], {radius:4, color:'#8C2A1D', fillColor:'#A8792B', fillOpacity:1}).addTo(leafletMap).bindTooltip(c.name, {permanent:true, className:'pm-city-tooltip'}));
 
   let mapPickMode = null;
@@ -217,10 +181,7 @@
       dynamicLocations.push(newLoc);
       
       const sel = mapPickMode === 'from' ? document.getElementById('pm-from') : document.getElementById('pm-to');
-      const opt = document.createElement('option');
-      opt.value = id; opt.textContent = newLoc.name;
-      sel.appendChild(opt); sel.value = id;
-      
+      sel.appendChild(new Option(newLoc.name, id)); sel.value = id;
       L.circleMarker([newLoc.lat,newLoc.lon], {radius:4, color:'#4F6F63', fillColor:'#4F6F63', fillOpacity:1}).addTo(leafletMap);
       togglePin(mapPickMode);
   });
@@ -228,17 +189,13 @@
   function refreshSelects() {
     const f=document.getElementById('pm-from'), t=document.getElementById('pm-to');
     f.innerHTML=''; t.innerHTML='';
-    dynamicLocations.forEach(c => {
-      f.appendChild(new Option(c.name, c.id));
-      t.appendChild(new Option(c.name, c.id));
-    });
+    dynamicLocations.forEach(c => { f.appendChild(new Option(c.name, c.id)); t.appendChild(new Option(c.name, c.id)); });
     t.value = 'cusco';
   }
   refreshSelects();
 
-  // Tabs
-  document.getElementById('pm-tabbtn-enviar').onclick = () => { switchTab('enviar'); };
-  document.getElementById('pm-tabbtn-bandeja').onclick = () => { switchTab('bandeja'); };
+  document.getElementById('pm-tabbtn-enviar').onclick = () => switchTab('enviar');
+  document.getElementById('pm-tabbtn-bandeja').onclick = () => switchTab('bandeja');
   function switchTab(t) {
       document.getElementById('pm-tabbtn-enviar').classList.toggle('active', t==='enviar');
       document.getElementById('pm-tabbtn-bandeja').classList.toggle('active', t==='bandeja');
@@ -247,66 +204,47 @@
       if(t==='bandeja') renderInbox();
   }
 
-  // --- MULTIJUGADOR / RED (MQTT) ---
-  let mqttClient = null;
-  let currentRoom = "";
-  
-  // Cargar datos de perfil guardados
+  // --- MULTIJUGADOR FIREBASE ---
   document.getElementById('my-name').value = localStorage.getItem('pm-name') || '';
-  document.getElementById('my-room').value = localStorage.getItem('pm-room') || 'sala-publica';
+  document.getElementById('my-room').value = localStorage.getItem('pm-room') || '';
 
   document.getElementById('btn-connect').addEventListener('click', () => {
       const name = document.getElementById('my-name').value.trim();
       const room = document.getElementById('my-room').value.trim().toLowerCase();
+      if(!name || !room) { alert("Llena tu Nombre y el Nombre de la Sala."); return; }
       
-      if(!name || !room) { alert("Llena tu Nombre y el Nombre de la Sala para conectar."); return; }
-      
-      localStorage.setItem('pm-name', name);
-      localStorage.setItem('pm-room', room);
-      
-      // Pedir permisos de notificacion
-      if ("Notification" in window && Notification.permission !== "granted") {
-          Notification.requestPermission();
-      }
+      localStorage.setItem('pm-name', name); localStorage.setItem('pm-room', room);
+      if ("Notification" in window && Notification.permission !== "granted") Notification.requestPermission();
 
       const statusEl = document.getElementById('conn-status');
-      statusEl.innerHTML = '<span class="status-dot"></span>Conectando...';
+      statusEl.innerHTML = '<span class="status-dot"></span>Conectando a Google...';
 
-      if(mqttClient) mqttClient.end(); // Desconectar si había otra sala
-
-      // Conectar al servidor público gratuito MQTT
-      mqttClient = mqtt.connect('wss://test.mosquitto.org:8081');
-      currentRoom = `pergaminos-app/${room}`;
-
-      mqttClient.on('connect', () => {
-          statusEl.innerHTML = '<span class="status-dot online"></span>Conectado a ' + room;
-          mqttClient.subscribe(currentRoom);
-          allMessages = []; // Limpiar cielo al entrar a nueva sala
-      });
-
-      mqttClient.on('message', (topic, payload) => {
-          const msg = JSON.parse(payload.toString());
-          // Evitar duplicados
-          if(!allMessages.find(m => m.id === msg.id)) {
+      if(unsubscribeSnapshot) unsubscribeSnapshot();
+      
+      // Escuchar la sala en tiempo real
+      unsubscribeSnapshot = onSnapshot(collection(db, "rooms", room, "messages"), (snapshot) => {
+          allMessages = [];
+          snapshot.forEach((doc) => {
+              const msg = doc.data();
+              msg.id = doc.id;
               allMessages.push(msg);
-              // Si trae puntos del mapa que no tengo, los agrego visualmente
               [msg.fromData, msg.toData].forEach(loc => {
                   if(loc.id.startsWith('custom-') && !dynamicLocations.find(l=>l.id===loc.id)){
                       dynamicLocations.push(loc);
                   }
               });
-          }
+          });
+          statusEl.innerHTML = '<span class="status-dot online"></span>Conectado a ' + room;
       });
   });
 
   // --- ENVIAR CARTA ---
-  document.getElementById('pm-form').addEventListener('submit', (e)=>{
+  document.getElementById('pm-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if(!mqttClient || !mqttClient.connected) {
-        alert("Primero debes darle clic a 'Conectar red' arriba."); return;
-    }
+    const room = document.getElementById('my-room').value.trim().toLowerCase();
+    if(!unsubscribeSnapshot) { alert("¡Haz clic en 'Conectar red' primero!"); return; }
 
-    const myName = document.getElementById('my-name').value.trim();
+    const sender = document.getElementById('my-name').value.trim();
     const recipient = document.getElementById('pm-recipient').value.trim();
     const bird = document.getElementById('pm-bird').value;
     const text = document.getElementById('pm-text').value.trim();
@@ -316,68 +254,50 @@
     if(f.id === t.id) { alert('El origen y destino deben ser distintos.'); return; }
 
     const dist = haversine(f.lat, f.lon, t.lat, t.lon);
-    const hours = dist/BASE_SPEED; // acelerado
+    const hours = dist/BASE_SPEED;
     const now = Date.now();
     const arrivalAt = now + (hours * 3600 * 1000);
 
-    const msg = {
-      id: "msg-" + now + "-" + Math.floor(Math.random()*1000),
-      sender: myName, recipient, bird, text, fromData: f, toData: t,
-      sentAt: now, arrivalAt
-    };
+    const msg = { sender, recipient, bird, text, fromData: f, toData: t, sentAt: now, arrivalAt };
     
-    // Publicar al mundo (a la sala)
-    mqttClient.publish(currentRoom, JSON.stringify(msg));
+    // Guardar en Firebase
+    await addDoc(collection(db, "rooms", room, "messages"), msg);
     
     document.getElementById('pm-text').value='';
     const conf = document.getElementById('pm-confirm');
-    conf.textContent = `¡${bird} soltado en la red!`;
+    conf.textContent = `¡${bird} soltado en la red de Google!`;
     setTimeout(() => conf.textContent = '', 4000);
   });
 
-  // --- NOTIFICACIONES ---
+  // --- ANIMACIÓN Y NOTIFICACIONES ---
   function checkArrivals() {
       const now = Date.now();
       const myName = document.getElementById('my-name').value.trim().toLowerCase();
       let changed = false;
 
       allMessages.forEach(m => {
-          if (notifiedIds.includes(m.id)) return; // ya notificado
-
-          if (now >= m.arrivalAt) { // Si ya llegó
+          if (notifiedIds.includes(m.id)) return;
+          if (now >= m.arrivalAt) { 
               const isForMe = myName && m.recipient.toLowerCase() === myName;
               const isFromMe = myName && m.sender.toLowerCase() === myName;
 
               if (isForMe || isFromMe) {
-                  let title, body;
-                  
                   if (isForMe) {
-                      title = `¡Ha llegado un ${m.bird} para ti!`;
-                      body = `${m.sender} te ha enviado un mensaje desde ${m.fromData.name}.`;
-                      // Hacer sonar campana
                       document.getElementById('audio-bell').play().catch(e=>{});
-                  } else if (isFromMe) {
-                      title = `¡Tu ${m.bird} completó el viaje!`;
-                      body = `Tu carta fue entregada con éxito a ${m.recipient}.`;
+                      if (Notification.permission === "granted") {
+                          new Notification(`¡Ha llegado un ${m.bird} para ti!`, { body: `${m.sender} te envió un mensaje.`, icon: "https://cdn-icons-png.flaticon.com/512/3011/3011127.png" });
+                      }
+                  } else if (isFromMe && Notification.permission === "granted") {
+                      new Notification(`¡Tu ${m.bird} llegó!`, { body: `Entregada a ${m.recipient}.` });
                   }
-
-                  if (title && Notification.permission === "granted") {
-                      new Notification(title, { body, icon: "https://cdn-icons-png.flaticon.com/512/3011/3011127.png" });
-                  }
-                  
-                  // Forzar refresco visual si estoy en la pestaña de bandeja
-                  if(isForMe && document.getElementById('pm-panel-bandeja').style.display==='block'){
-                      renderInbox(); 
-                  }
+                  if(isForMe && document.getElementById('pm-panel-bandeja').style.display==='block') renderInbox(); 
               }
-              notifiedIds.push(m.id);
-              changed = true;
+              notifiedIds.push(m.id); changed = true;
           }
       });
       if(changed) localStorage.setItem('pm-notificados', JSON.stringify(notifiedIds));
   }
 
-  // --- RENDERIZADO VISUAL ---
   const flightLayers = {};
   function bez(p0,p1,t){
       const c = [ (p0[0]+p1[0])/2 - (p1[1]-p0[1])*0.13, (p0[1]+p1[1])/2 + (p1[0]-p0[0])*0.13 ];
@@ -386,13 +306,11 @@
 
   function renderMap(){
     const now=Date.now();
-    const active = allMessages.filter(m => now < m.arrivalAt); // volando
+    const active = allMessages.filter(m => now < m.arrivalAt); 
     
-    // Quitar del mapa las que ya llegaron
     Object.keys(flightLayers).forEach(id=>{
       if(!active.find(x=>x.id===id)){
-        leafletMap.removeLayer(flightLayers[id].line);
-        leafletMap.removeLayer(flightLayers[id].marker);
+        leafletMap.removeLayer(flightLayers[id].line); leafletMap.removeLayer(flightLayers[id].marker);
         delete flightLayers[id];
       }
     });
@@ -417,12 +335,10 @@
     const wrap = document.getElementById('pm-envelopes-wrap');
     const now = Date.now();
     const myName = document.getElementById('my-name').value.trim().toLowerCase();
-    
-    // Solo mostramos cartas entregadas que son para mí, o mías enviadas a otros
     const delivered = allMessages.filter(m => now >= m.arrivalAt && (m.recipient.toLowerCase()===myName || m.sender.toLowerCase()===myName)).sort((a,b)=>b.arrivalAt-a.arrivalAt);
     
     wrap.innerHTML = delivered.length===0 
-      ? `<div style="text-align:center; padding: 20px; color:gray; font-style:italic;">No hay cartas entregadas relacionadas contigo en esta sala.</div>`
+      ? `<div style="text-align:center; padding: 20px; color:gray; font-style:italic;">Bandeja vacía en esta sala.</div>`
       : delivered.map(m=>`
           <div class="pm-envelope">
             <div class="pm-envelope-top">De: ${m.sender} ➔ Para: ${m.recipient}</div>
@@ -432,13 +348,7 @@
         `).join('');
   }
 
-  // LOOP PRINCIPAL (1 vez por segundo)
-  setInterval(() => { 
-      renderMap(); 
-      checkArrivals(); 
-  }, 1000);
-
-})();
+  setInterval(() => { renderMap(); checkArrivals(); }, 1000);
 </script>
 </body>
 </html>
